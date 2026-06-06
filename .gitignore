@@ -1,0 +1,11 @@
+node_modules
+dist
+.vite
+coverage
+.DS_Store
+.env
+.env.*
+backend/data
+frontend/dist
+backend/dist
+pnpm-lock.yaml

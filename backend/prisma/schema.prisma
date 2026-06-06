@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ImageStatus {
+  draft
+  uploading
+  uploaded
+  queued
+  processing
+  accepted
+  rejected
+  deleted
+}
+
+model Image {
+  id                  String             @id @default(cuid())
+  fileName            String
+  originalFileName    String
+  contentType         String
+  sizeBytes           Int
+  status              ImageStatus        @default(draft)
+  rejectionReasons    Json?
+  storageKey          String?
+  previewKey          String?
+  hash                String?
+  width               Int?
+  height              Int?
+  deletedAt           DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  versions            ImageVersion[]
+  validationResults   ValidationResult[]
+  jobs                ProcessingJob[]
+}
+
+model ImageVersion {
+  id          String   @id @default(cuid())
+  imageId     String
+  kind        String
+  storageKey  String
+  mimeType    String
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now())
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+}
+
+model ValidationResult {
+  id          String   @id @default(cuid())
+  imageId     String
+  status      ImageStatus
+  details     Json
+  blurScore   Float?
+  hash        String?
+  faceData    Json?
+  createdAt   DateTime @default(now())
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+}
+
+model ProcessingJob {
+  id          String   @id @default(cuid())
+  imageId     String
+  state       String
+  attempts    Int      @default(0)
+  availableAt DateTime  @default(now())
+  lockedAt    DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+}
