@@ -53,8 +53,8 @@ export function createWorker({ store, storage, events }) {
       const variantExt = extensionForMime(derivatives.mimeType);
       const normalizedKey = `derived/${image.id}/${baseName}.normalized.${variantExt}`;
       const thumbnailKey = `derived/${image.id}/${baseName}.thumb.png`;
-      await storage.saveBuffer(normalizedKey, derivatives.mimeType === 'image/png' ? derivatives.pngBuffer : derivatives.jpegBuffer);
-      await storage.saveBuffer(thumbnailKey, derivatives.pngBuffer);
+      await storage.saveBuffer(normalizedKey, derivatives.mimeType === 'image/png' ? derivatives.pngBuffer : derivatives.jpegBuffer, derivatives.mimeType);
+      await storage.saveBuffer(thumbnailKey, derivatives.pngBuffer, 'image/png');
       const version = await store.addVersion(image.id, {
         kind: 'normalized',
         storageKey: normalizedKey,

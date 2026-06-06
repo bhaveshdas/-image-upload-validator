@@ -5,16 +5,23 @@
   "scripts": {
     "dev": "node src/index.js",
     "build": "node -e \"process.exit(0)\"",
+    "prisma:generate": "prisma generate",
+    "prisma:db-push": "prisma db push",
     "test": "node --test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1063.0",
+    "@aws-sdk/s3-request-presigner": "^3.1063.0",
+    "@prisma/client": "^6.19.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "@upload-platform/shared": "file:../packages/shared",
     "@vladmandic/face-api": "^1.7.15",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "file-type": "^19.6.0",
+    "prisma": "^6.19.0",
     "sharp": "^0.34.3",
     "uuid": "^11.1.0"
   }

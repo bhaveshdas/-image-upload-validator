@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createPlatform } from './app.js';
 import { getConfig } from './config.js';
 

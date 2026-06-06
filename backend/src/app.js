@@ -6,7 +6,8 @@ import cors from 'cors';
 import { IMAGE_STATUSES, VALIDATION_LIMITS, humanFileSize, isAcceptedImage } from '@upload-platform/shared';
 import { EventHub } from './events.js';
 import { FileStore } from './store.js';
-import { LocalStorage } from './storage.js';
+import { PrismaStore } from './prismaStore.js';
+import { LocalStorage, MinioStorage } from './storage.js';
 import { createWorker } from './worker.js';
 import { getConfig } from './config.js';
 
@@ -27,6 +28,26 @@ function createBaseUrl(req) {
   return `${proto}://${req.get('host')}`;
 }
 
+function createUploadTicketLimiter({ limit, windowMs = 60 * 60 * 1000 }) {
+  const buckets = new Map();
+  return (req, res, next) => {
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const bucket = buckets.get(key);
+    if (!bucket || bucket.resetAt <= now) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      next();
+      return;
+    }
+    bucket.count += 1;
+    if (bucket.count > limit) {
+      res.status(429).json({ error: 'Too many upload attempts. Try again later.' });
+      return;
+    }
+    next();
+  };
+}
+
 async function ensureDirectories(dataDir, storageDir) {
   await fs.mkdir(dataDir, { recursive: true });
   await fs.mkdir(storageDir, { recursive: true });
@@ -44,24 +65,36 @@ async function serveMediaToken(store, storage, res, token) {
     res.status(404).json({ error: 'Token expired or not found' });
     return;
   }
-  const filePath = storage.filePath(entry.key);
   const fileName = path.basename(entry.key);
   res.setHeader('Content-Type', fileName.endsWith('.png') ? 'image/png' : 'image/jpeg');
   res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
-  res.sendFile(filePath);
+  await storage.writeToResponse(entry.key, res);
+}
+
+function createStore(config) {
+  if (config.storeDriver === 'prisma') return new PrismaStore();
+  return new FileStore(config.dataDir);
+}
+
+function createStorage(config) {
+  if (config.storageDriver === 'minio') return new MinioStorage(config.minio);
+  return new LocalStorage(config.storageDir);
 }
 
 export async function createPlatform() {
   const config = getConfig();
-  await ensureDirectories(config.dataDir, config.storageDir);
+  if (config.storeDriver !== 'prisma' || config.storageDriver !== 'minio') {
+    await ensureDirectories(config.dataDir, config.storageDir);
+  }
   const app = express();
-  const store = new FileStore(config.dataDir);
-  const storage = new LocalStorage(config.storageDir);
+  const store = createStore(config);
+  const storage = createStorage(config);
   const events = new EventHub();
   const worker = createWorker({ store, storage, events });
 
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
+  const limitUploadTickets = createUploadTicketLimiter({ limit: config.maxUploadTicketsPerHour });
 
   app.get('/api/health', async (_req, res) => {
     res.json({ ok: true });
@@ -78,7 +111,7 @@ export async function createPlatform() {
     req.on('close', () => res.end());
   });
 
-  app.post('/api/images', async (req, res) => {
+  app.post('/api/images', limitUploadTickets, async (req, res) => {
     const { fileName, contentType, sizeBytes } = req.body || {};
     if (!fileName || !contentType || !Number.isFinite(sizeBytes)) {
       res.status(400).json({ error: 'fileName, contentType, and sizeBytes are required.' });
@@ -128,7 +161,7 @@ export async function createPlatform() {
     }
     const buffer = Buffer.isBuffer(req.body) ? req.body : await bufferFromRequest(req);
     const storageKey = `originals/${image.id}/${path.basename(image.originalFileName)}`;
-    await storage.saveBuffer(storageKey, buffer);
+    await storage.saveBuffer(storageKey, buffer, image.contentType);
     await store.setUploaded(image.id, {
       storageKey,
       sizeBytes: buffer.byteLength,

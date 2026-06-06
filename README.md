@@ -13,4 +13,17 @@ npm install
 npm run dev
 ```
 
-The backend defaults to a local file-backed demo store. Set `DATABASE_URL` and wire the Prisma path if you want to replace it with PostgreSQL persistence.
+The backend can run with local JSON/disk storage or with Postgres + MinIO.
+
+For Postgres + MinIO:
+
+```bash
+cp .env.example .env
+docker compose up -d
+npm run prisma:db-push -w backend
+npm run dev
+```
+
+MinIO console: `http://127.0.0.1:9001`
+
+Default local credentials are `minioadmin` / `minioadmin`.

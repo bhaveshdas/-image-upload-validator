@@ -5,6 +5,7 @@ coverage
 .DS_Store
 .env
 .env.*
+!.env.example
 backend/data
 frontend/dist
 backend/dist

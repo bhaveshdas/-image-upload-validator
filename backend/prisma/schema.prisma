@@ -28,15 +28,24 @@ model Image {
   rejectionReasons    Json?
   storageKey          String?
   previewKey          String?
+  normalizedKey       String?
   hash                String?
   width               Int?
   height              Int?
+  latestVersionId     String?
+  uploadToken         String?
+  uploadTokenExpiresAt DateTime?
   deletedAt           DateTime?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   versions            ImageVersion[]
   validationResults   ValidationResult[]
   jobs                ProcessingJob[]
+  uploadTokens        UploadToken[]
+  mediaTokens         MediaToken[]
+
+  @@index([status, createdAt])
+  @@index([hash])
 }
 
 model ImageVersion {
@@ -49,6 +58,8 @@ model ImageVersion {
   height      Int?
   createdAt   DateTime @default(now())
   image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, kind])
 }
 
 model ValidationResult {
@@ -61,6 +72,8 @@ model ValidationResult {
   faceData    Json?
   createdAt   DateTime @default(now())
   image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
 }
 
 model ProcessingJob {
@@ -74,4 +87,30 @@ model ProcessingJob {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([state, availableAt])
+  @@index([imageId, state])
+}
+
+model UploadToken {
+  token     String   @id
+  imageId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId])
+  @@index([expiresAt])
+}
+
+model MediaToken {
+  token     String   @id
+  imageId   String
+  key       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId])
+  @@index([expiresAt])
 }
