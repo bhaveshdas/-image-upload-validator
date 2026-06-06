@@ -19,7 +19,14 @@ export function ImageSection({ title, items, emptyLabel, onRetry, onDelete }) {
         ) : items.map((item) => (
           <article key={item.id} className="image-row">
             <div className="image-preview">
-              {item.mediaUrls?.preview ? <img src={item.mediaUrls.preview} alt={item.fileName} /> : <span>{item.fileName.slice(0, 1).toUpperCase()}</span>}
+              {item.mediaUrls?.preview || item.mediaUrls?.original ? (
+                <img
+                  src={item.mediaUrls.preview || item.mediaUrls.original}
+                  alt={item.fileName}
+                />
+              ) : (
+                <span>{item.fileName.slice(0, 1).toUpperCase()}</span>
+              )}
             </div>
             <div className="image-content">
               <div className="image-title-line">
